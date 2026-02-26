@@ -25,6 +25,8 @@ When in doubt about terminology, field names, or architecture, check the concept
 finance-coach/
 ├── CLAUDE.md                    # This file
 ├── .env.example                 # Template for secrets
+├── .envrc                       # direnv config (safe to commit — no secrets)
+├── .mcp.json                    # MongoDB MCP Server for Claude Code
 ├── .gitignore
 ├── Makefile                     # Common commands
 ├── requirements.txt             # Python dependencies
@@ -95,9 +97,11 @@ finance-coach/
 ### Prerequisites
 
 - Python 3.12+
+- Node.js 20.19.0+ (for MongoDB MCP Server)
 - MongoDB Atlas account (free tier M0 is sufficient)
 - Voyage AI API key (`voyage-3-large`)
 - Anthropic API key (Claude Sonnet 4.5)
+- [direnv](https://direnv.net/) (`brew install direnv`, add `eval "$(direnv hook zsh)"` to `.zshrc`)
 
 ### Environment Variables (.env)
 
@@ -108,6 +112,37 @@ VOYAGE_API_KEY=vo-...
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+### direnv (.envrc)
+
+This file bridges the `.env` and the MongoDB MCP Server (which expects `MDB_MCP_CONNECTION_STRING`):
+
+```bash
+dotenv
+export MDB_MCP_CONNECTION_STRING="$MONGODB_URI"
+```
+
+Run `direnv allow` once after creating this file. From then on, `cd`-ing into the project auto-loads all env vars.
+
+### MongoDB MCP Server (.mcp.json)
+
+Gives Claude Code direct access to the Atlas cluster for inspecting schemas, verifying seed data, and checking indexes. No secrets in this file — it reads `MDB_MCP_CONNECTION_STRING` from the environment (set by direnv).
+
+```json
+{
+  "mcpServers": {
+    "MongoDB": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server@latest"
+      ]
+    }
+  }
+}
+```
+
+No `--readOnly` flag during development (Claude Code needs to create collections and insert seed data). Add it after Phase 1 is complete.
+
 ### Quick Start
 
 ```bash
@@ -116,6 +151,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # Fill in .env with your keys
+
+direnv allow
 
 # Setup MongoDB (indexes + seed data)
 make setup
