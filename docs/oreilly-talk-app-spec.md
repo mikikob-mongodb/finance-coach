@@ -1077,7 +1077,7 @@ Do NOT create memories for:
 
 For each memory unit, provide:
 
-```json
+
 [
   {
     "collection": "preferences" | "flags",
@@ -1088,7 +1088,7 @@ For each memory unit, provide:
     "expires_in_days": null | number
   }
 ]
-```
+
 
 If no new memories should be created, return an empty array: []
 
