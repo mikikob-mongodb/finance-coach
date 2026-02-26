@@ -236,7 +236,7 @@ RAG can access either layer. The difference is what the data represents and who 
 
 Four layers, from raw sources to what the LLM actually sees:
 
-![](docs/diagrams/concepts_fig_3_data_hierarchy.png)
+![](diagrams/concepts_doc/concepts_fig_3_data_hierarchy.png)
 ```
 CONTEXT ASSEMBLY — TWO PHASES (both are SELECT + INJECT):
 
@@ -793,7 +793,7 @@ The **Three Moves** (Write, Select, Inject) describe what the agent does on a si
 
 The Moves happen *inside* the real-time Pipelines. The two offline Pipelines have no corresponding Move — they run without user interaction.
 
-![](docs/diagrams/concepts_fig_fourpipelines.png)
+![](diagrams/concepts_doc/concepts_fig_fourpipelines.png)
 
 **Reading the diagram:**
 - The outer box is the full production system (Four Pipelines).
