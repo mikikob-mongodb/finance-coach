@@ -57,22 +57,7 @@
 
 An agent is the reasoning layer between the user and the application's infrastructure. It's not the UI. It's not the database. It's not the LLM. It's the orchestration code that decides what to do with each user interaction.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         APPLICATION                          │
-│                                                             │
-│  ┌──────────┐                              ┌─────────────┐ │
-│  │          │    ┌──────────────────────┐   │             │ │
-│  │   USER   │◄──►│       AGENT          │◄──►│ INFRASTRUCTURE│
-│  │INTERFACE │    │                      │   │             │ │
-│  │          │    │  • Receives input     │   │ • Database  │ │
-│  │ (UI/API) │    │  • Reasons over it    │   │ • APIs      │ │
-│  │          │    │  • Decides actions    │   │ • LLM calls │ │
-│  │          │    │  • Returns output     │   │ • Embeddings│ │
-│  └──────────┘    └──────────────────────┘   └─────────────┘ │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+![Chat and Memory Panel](diagrams/concepts_doc/concepts_fig_0_generalcase.png)
 
 In a traditional app, the application logic layer does the same thing — receives requests, processes them, talks to databases and services, returns responses. An agent is that layer, but with an LLM doing the reasoning instead of hardcoded business logic.
 
@@ -86,24 +71,7 @@ In a traditional app, the application logic layer does the same thing — receiv
 
 Not every feature in an application needs an agent. An agent adds a reasoning layer — which means LLM calls, latency, cost, and complexity. If the task doesn't require reasoning, skip the agent and query the database directly.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                            APPLICATION                                   │
-│                                                                         │
-│  ┌──────────┐     ┌──────────────────┐     ┌─────────────────────────┐ │
-│  │          │     │    AGENT         │     │     INFRASTRUCTURE      │ │
-│  │   USER   │◄───►│  (reasoning)     │◄───►│                         │ │
-│  │INTERFACE │     │                  │     │  ┌───────────────────┐  │ │
-│  │          │     └──────────────────┘     │  │    MongoDB Atlas  │  │ │
-│  │          │                              │  │                   │  │ │
-│  │          │◄────────────────────────────►│  │  • full-text      │  │ │
-│  │          │     direct query             │  │  • vector search  │  │ │
-│  │          │     (no agent needed)        │  │  • hybrid search  │  │ │
-│  │          │                              │  │  • aggregation    │  │ │
-│  └──────────┘                              │  └───────────────────┘  │ │
-│                                            └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+![](diagrams/concepts_doc/concepts_fig_1_both.png)
 
 **Use the agent when the task requires reasoning:**
 - "Where am I wasting money?" → needs to cross-reference priorities against spending patterns, weigh trade-offs, generate personalized advice
@@ -144,21 +112,7 @@ A memory-enabled agent adds two capabilities to the basic loop:
 1. **It reads from persistent memory** — before and during each interaction, it loads relevant knowledge from past interactions (deterministic SELECT at session start, query-driven SELECT per message)
 2. **It writes to persistent memory** — after each interaction, it decides what's worth remembering and stores it as structured memory units
 
-```
-                    ┌─────────────────────────────┐
-                    │        MEMORY STORE          │
-                    │  (persistent, searchable)    │
-                    └──────┬──────────────┬────────┘
-                     reads │              │ writes
-                    ┌──────▼──────────────▼────────┐
-User message ──────►│          AGENT               │──────► Response
-                    │                              │
-                    │  1. SELECT from memory        │
-                    │  2. Assemble context window   │
-                    │  3. LLM generates response    │
-                    │  4. WRITE new memories         │
-                    └──────────────────────────────┘
-```
+![](diagrams/concepts_doc/concepts_fig_2_withmemory.png)
 
 The agent is still the reasoning layer. Memory is what makes it a *learning* reasoning layer. Each interaction makes the next one better.
 
@@ -282,52 +236,8 @@ RAG can access either layer. The difference is what the data represents and who 
 
 Four layers, from raw sources to what the LLM actually sees:
 
+![](docs/diagrams/concepts_fig_3_data_hierarchy.png)
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                              LAYER 3: CONTEXT WINDOW                                     │
-│                              (what the LLM sees right now)                               │
-│                                                                                         │
-│  system prompt + baseline memories + selected memories + retrieved docs + user query      │
-│  ~300 tokens of the RIGHT context, assembled per-request, ephemeral                      │
-└──────────┬─────────────────────┬────────────────────┬──────────────────────┬─────────────┘
-           │                     │                    │                      │
-           │ ▲ SELECT            │ ▲ INJECT (Move 3)  │                      │ ▲
-           │ │ (deterministic)   │ │ format + insert   │                      │ │ semantic
-           │ │ session start:    │ │ into prompt       │ WRITE (Move 1)      │ │ search
-           │ │ fetch core        │ │                   │ LLM reasons over    │ │ retrieves
-           │ │ memories (latest  │ │ ▲ SELECT (Move 2) │ memories and creates│ │ docs
-           │ │ snapshot, top     │ │ │ (query-driven)  │ new memories        │ │
-           │ │ preferences)      │ │ │ hybrid search   │                     │ │
-           │ │                   │ │ │ retrieves top-k ▼                     │ │
-┌──────────┴─┴───────────────────┴─┴─┴────────────────────────────┐  ┌─────┴─┴────────────┐
-│                LAYER 2: AGENT MEMORY                             │  │  LAYER 4: REFERENCE │
-│                (structured, searchable, agent-managed)            │  │  KNOWLEDGE          │
-│                                                                  │  │  (not in this demo) │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐            │  │                     │
-│  │🟢 preferences │ │🔵 snapshots  │ │ 🟡 flags     │            │  │  Policies, guides,  │
-│  │  (semantic)   │ │  (episodic)  │ │  (working)   │            │  │  documentation      │
-│  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘            │  │                     │
-│         │                │                │                      │  │  Indexed by humans, │
-│  Written by the agent from reasoning                             │  │  shared across users│
-│  Accessed via hybrid search (vector + text)                      │  │  Accessed via       │
-│  ★ CORE OF THIS TALK                                            │  │  semantic search    │
-└─────────┼────────────────┼────────────────┼─────────────────────┘  └─────────────────────┘
-          │ ▲              │ ▲              │ ▲
-          │ │ EXTRACT      │ │ AGGREGATE    │ │ INFER
-          │ │ (from chat)  │ │ (from txns)  │ │ (from other
-          │ │              │ │              │ │  memories)
-┌─────────┴─┴──────────────┴─┴──────────────┴─┴──────────────────────────────────────────┐
-│                              LAYER 1: DATA SOURCES                                      │
-│                              (where info comes from)                                    │
-│                                                                                         │
-│  ⚪ transactions       ⚪ chat messages       ⚪ events / logs                           │
-│                                                                                         │
-│  Written by the application, not the agent                                              │
-│  Accessed via direct queries, aggregation pipelines                                     │
-│  NOT searched by the agent — provides provenance                                        │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-
-
 CONTEXT ASSEMBLY — TWO PHASES (both are SELECT + INJECT):
 
   Phase 1: SELECT in deterministic mode (session start)
