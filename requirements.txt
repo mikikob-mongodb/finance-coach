@@ -1,0 +1,10 @@
+pymongo[srv]
+voyageai
+anthropic
+streamlit
+python-dotenv
+pydantic>=2.0
+plotly
+pytest
+ruff
+pre-commit

@@ -136,7 +136,7 @@ celerybeat.pid
 
 # Environments
 .env
-.envrc
+# .envrc is safe to commit — no secrets, just bridges .env to MDB_MCP_CONNECTION_STRING
 .venv
 env/
 venv/
